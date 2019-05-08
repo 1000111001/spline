@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Canvas绘图与动画基础</title>
+</head>
+<body>
+<style>
+    #canvas{
+        border: 1px solid #aaa;
+        text-align: center;
+    }
+</style>
+<canvas id="canvas" width="1024" height="768">
+    当用户浏览器不支持Canvas,请更换浏览器重试！
+</canvas>
+<script type="text/javascript">
+    var context = canvas.getContext("2d");//得到绘图的上下文环境
+
+    function drawPoint(ctx, point) {
+	    ctx.fillStyle="#0000FF";
+	    let size = 6;
+	    ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+	}
+
+	function cardinalSplineAt(p0, p1, p2, p3, tension, t)
+	{
+		let s = (1 - tension) / 2;
+		let u = t;
+		let u2 = u * u;
+		let u3 = u2 * t;
+		let car0 = s * (-u3 + 2 * u2 - u);
+		let car1 = (2 - s) * u3 + (s - 3) * u2 + 1;
+		let car2 = (s - 2) * u3 + (3 - 2 * s) * u2 + s * u;
+		let car3 = s * (u3 - u2);
+
+		let ret = {};
+		ret.x = p0.x * car0 + p1.x * car1 + p2.x * car2 + p3.x * car3;
+		ret.y = p0.y * car0 + p1.y * car1 + p2.y * car2 + p3.y * car3;
+		return ret;
+	}
+
+	let points = [];
+	points.push({x: 400, y: 100});
+	points.push({x: 200, y: 300});
+	points.push({x: 600, y: 300});
+	points.push({x: 400, y: 600});
+	// points.push({x: 500, y: 600});
+	// points.push({x: 600, y: 600});
+	// points.push({x: 700, y: 600});
+
+	function render()
+	{
+	    context.beginPath();
+	    for (let k = 1; k < points.length - 2; ++k)
+	    {
+			let p = points[k];
+			for (let i = 0; i <= 100; ++i)
+			{
+				context.moveTo(p.x, p.y);
+				p = cardinalSplineAt(points[k-1], points[k], points[k+1], points[k+2], -5, i / 100);
+			    context.lineTo(p.x, p.y);
+			}
+	    }
+	    context.closePath();
+
+	    context.lineWidth = 2;
+	    context.strokeStyle = "red";
+	    context.stroke();
+
+
+	    for (let k = 0; k < points.length; ++k)
+	    {
+			drawPoint(context, points[k]);
+	    }
+	}
+	render();
+
+	let dragingPoint = null;
+    canvas.addEventListener("mousedown", onMouseDown, false);
+    canvas.addEventListener("mousemove", onMouseDrag, false);
+    canvas.addEventListener("mouseup", onMouseUp, false);
+	function onMouseDown(event) 
+	{
+		var x = event.pageX;
+		var y = event.pageY;
+		var canvas = event.target;
+		var loc = getPointOnCanvas(canvas, x, y);
+    	for (let i = 0; i < points.length; ++i)
+    	{
+    		if ((loc.x - points[i].x) *(loc.x - points[i].x) + (loc.y - points[i].y) * (loc.y - points[i].y) <= 36)
+    		{
+    			dragingPoint = points[i];
+    			break;
+    		}
+    	}
+	}
+
+	function onMouseUp(event)
+	{
+		dragingPoint = null;
+	}
+
+	function onMouseDrag(event)
+	{
+		if (dragingPoint == null) return;
+
+		var x = event.pageX;
+		var y = event.pageY;
+		var canvas = event.target;
+		var loc = getPointOnCanvas(canvas, x, y);
+		dragingPoint.x = loc.x;
+		dragingPoint.y = loc.y;
+		clearCanvas();
+		render();
+	}
+
+	function getPointOnCanvas(canvas, x, y) 
+	{
+	    var bbox = canvas.getBoundingClientRect();
+	    return { 
+	    	x:x - bbox.left * (canvas.width / bbox.width),
+            y:y - bbox.top  * (canvas.height / bbox.height)
+        };
+	}
+
+	function clearCanvas() 
+	{
+		context.clearRect(0, 0, 1024, 768);
+	}
+
+</script>
+</body>
+</html>
