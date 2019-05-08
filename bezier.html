@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"/>
-    <title>cardinal样条曲线</title>
+    <title>Bezier样条曲线</title>
 </head>
 <body>
 <style>
@@ -40,39 +40,81 @@
 		return ret;
 	}
 
-	let points = [];
-	points.push({x: 400, y: 100});
-	points.push({x: 200, y: 300});
-	points.push({x: 600, y: 300});
-	points.push({x: 400, y: 600});
-	// points.push({x: 500, y: 600});
-	// points.push({x: 600, y: 600});
-	// points.push({x: 700, y: 600});
-
-	function render()
+	function binomialCoeffs(n, C)
 	{
-	    context.beginPath();
-	    for (let k = 1; k < points.length - 2; ++k)
-	    {
-			let p = points[k];
-			for (let i = 0; i <= 100; ++i)
-			{
-				context.moveTo(p.x, p.y);
-				p = cardinalSplineAt(points[k-1], points[k], points[k+1], points[k+2], -5, i / 100);
-			    context.lineTo(p.x, p.y);
-			}
-	    }
-	    context.closePath();
+		for (let k = 0; k <= n; ++k)
+		{
+			// compute n!/k!(n-k)!
+			C[k] = 1;
+			for (let i = n; i >= k + 1; --i) C[k] *= i;
+			for (let i = n - k; i >= 1; --i) C[k] /= i;
+		}
+		return C;
+	}
 
+	function computeBezPt(points, u, C)
+	{
+		let nCtrlPts = points.length;
+		let n = nCtrlPts - 1;
+		let pt = {x:0, y:0};
+		for (let k = 0; k <= n; ++k)
+		{
+			let bez = C[k] * Math.pow(u, k) * Math.pow(1 - u, n - k);
+			pt.x += points[k].x * bez;
+			pt.y += points[k].y * bez;
+		}
+		return pt;
+	}
+
+	function renderBezier(points)
+	{
+		let C = [];
+		for (let i = 0; i < points.length; ++i) C.push(1);
+		binomialCoeffs(C.length - 1, C);
+
+		let nBezCurvePts = 1000;
+		let p = points[0];
+	    context.beginPath();
+		for (let i = 0; i <= nBezCurvePts; ++i)
+		{
+			context.moveTo(p.x, p.y);
+			p = computeBezPt(points, i / nBezCurvePts, C);
+		    context.lineTo(p.x, p.y);
+		}
+	    context.closePath();
 	    context.lineWidth = 2;
 	    context.strokeStyle = "red";
 	    context.stroke();
+		
+	    context.beginPath();
+		p = points[0];
+		for (let i = 1; i < points.length; ++i)
+		{
+			context.moveTo(p.x, p.y);
+			p = points[i];
+		    context.lineTo(p.x, p.y);
+		}
+	    context.closePath();
+	    context.lineWidth = 1;
+	    context.strokeStyle = "blue";
+	    context.stroke();
+	}
 
+	let p0 = {x: 400, y: 100};
+	let p1 = {x: 200, y: 300};
+	let p2 = {x: 600, y: 300};
+	let p3 = {x: 400, y: 600};
+	let p4 = {x: 200, y: 600};
+	let points = [p0, p1, p2, p3, p4];
 
-	    for (let k = 0; k < points.length; ++k)
-	    {
-			drawPoint(context, points[k]);
-	    }
+	function render()
+	{
+		renderBezier(points);
+		
+		for (let i = 0; i < points.length; ++i)
+		{
+			drawPoint(context, points[i]);
+		}
 	}
 	render();
 
@@ -82,13 +124,14 @@
     canvas.addEventListener("mouseup", onMouseUp, false);
 	function onMouseDown(event) 
 	{
+		var colliderSize = 9 * 9;
 		var x = event.pageX;
 		var y = event.pageY;
 		var canvas = event.target;
 		var loc = getPointOnCanvas(canvas, x, y);
     	for (let i = 0; i < points.length; ++i)
     	{
-    		if ((loc.x - points[i].x) *(loc.x - points[i].x) + (loc.y - points[i].y) * (loc.y - points[i].y) <= 36)
+    		if ((loc.x - points[i].x) *(loc.x - points[i].x) + (loc.y - points[i].y) * (loc.y - points[i].y) <= colliderSize)
     		{
     			dragingPoint = points[i];
     			break;
